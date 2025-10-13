@@ -41,4 +41,4 @@ def remove_user(user_id: int):
 
 @app.get("/api/health",status_code=status.HTTP_200_OK)
 def health_check():
-    return
+    return 
