@@ -6,9 +6,9 @@ from sqlalchemy.orm import selectinload
 from .database import engine, SessionLocal
 from .models import Base, UserDB, CourseDB, ProjectDB
 from .schemas import (
-    UserCreate, UserRead,
+    UserCreate, UserRead, UserPATCH,
     CourseCreate, CourseRead,
-    ProjectCreate, ProjectRead, ProjectPUT,
+    ProjectCreate, ProjectRead, ProjectPATCH,
     ProjectReadWithOwner, ProjectCreateForUser
 )
 
@@ -147,6 +147,35 @@ def update_user(user_id: int, payload: UserRead, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="User already exists")
     return user
 
+@app.patch("/api/users/{user_id}", response_model=UserPATCH, status_code=status.HTTP_201_CREATED)
+def patch_user(user_id: int, payload: UserPATCH, db: Session = Depends(get_db)):
+    user_details = payload.model_dump(exclude_unset=True)
+    if not user:
+        raise HTTPException(status_code=404, detail="No new details")
+    try:
+        stmt = update(UserDB).where(UserDB.id == user_id).values(**user_details)
+        db.execute(stmt)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="User already exists")
+    return user
+
+@app.patch("/api/projects/{proj_id}", response_model=ProjectPATCH, status_code=status.HTTP_201_CREATED)
+def patch_proj(proj_id: int, payload: ProjectPATCH, db: Session = Depends(get_db)):
+    projID = db.get(ProjectDB, proj_id)
+    if not projID:
+        raise HTTPException(status_code=404, detail="User not found")
+    proj_details = payload.model_dump(exclude_unset=True)
+    try:
+        stmt = update(ProjectDB).where(ProjectDB.id == proj_id).values(**proj_details)
+        db.execute(stmt)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="User already exists")
+    return proj_details
+
 @app.put("/api/projects/{proj_id}", response_model=ProjectRead, status_code=201)
 def update_project(proj_id: int, payload: ProjectRead, db: Session = Depends(get_db)):
     userID = db.get(UserDB, user_id)
@@ -161,6 +190,7 @@ def update_project(proj_id: int, payload: ProjectRead, db: Session = Depends(get
         db.rollback()
         raise HTTPException(status_code=409, detail="User already exists")
     return proj
+
 
 
 # DELETE a user (triggers ORM cascade -> deletes their projects too)
