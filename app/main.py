@@ -150,7 +150,8 @@ def update_user(user_id: int, payload: UserRead, db: Session = Depends(get_db)):
 @app.patch("/api/users/{user_id}", response_model=UserPATCH, status_code=status.HTTP_201_CREATED)
 def patch_user(user_id: int, payload: UserPATCH, db: Session = Depends(get_db)):
     user_details = payload.model_dump(exclude_unset=True)
-    if not user:
+    userID = db.get(UserDB, user_id)
+    if not userID:
         raise HTTPException(status_code=404, detail="No new details")
     try:
         stmt = update(UserDB).where(UserDB.id == user_id).values(**user_details)
@@ -159,7 +160,7 @@ def patch_user(user_id: int, payload: UserPATCH, db: Session = Depends(get_db)):
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="User already exists")
-    return user
+    return user_details
 
 @app.patch("/api/projects/{proj_id}", response_model=ProjectPATCH, status_code=status.HTTP_201_CREATED)
 def patch_proj(proj_id: int, payload: ProjectPATCH, db: Session = Depends(get_db)):
@@ -178,9 +179,6 @@ def patch_proj(proj_id: int, payload: ProjectPATCH, db: Session = Depends(get_db
 
 @app.put("/api/projects/{proj_id}", response_model=ProjectRead, status_code=201)
 def update_project(proj_id: int, payload: ProjectRead, db: Session = Depends(get_db)):
-    userID = db.get(UserDB, user_id)
-    if not userID:
-        raise HTTPException(status_code=404, detail="User not found")
     proj = ProjectDB(**payload.model_dump())
     try:
         stmt = update(ProjectDB).where(ProjectDB.id == proj_id).values(id = proj.id, name = proj.name, description = proj.description, owner_id = proj.owner_id)
